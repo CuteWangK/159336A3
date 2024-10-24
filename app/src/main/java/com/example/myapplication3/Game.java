@@ -10,13 +10,15 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-
+import android.widget.Toast;
 public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
     private Bitmap background_game, playerbitmap0, playerbitmap1, playerbitmap2, playerbitmap3, playerbitmap4, playerbitmap5, weaponbitmap,bulletBitmap;
@@ -432,6 +434,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             float dy = (float) Math.sin(angle) * speed;
 
             // 移动玩家
+            player.setX(player.getX() + dx);
+            player.setY(player.getY() + dy);
             cameraOffsetX += dx;
             cameraOffsetY += dy;
 
@@ -479,7 +483,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         Matrix matrix = new Matrix();
 
         // 始终将角色绘制在屏幕中央，而不是基于角色的X、Y坐标
-        matrix.setTranslate(ViewWith / 2 - player.getBitmap().getWidth() / 2, ViewHeight / 2 - player.getBitmap().getHeight() / 2);
+        matrix.setTranslate(player.getX() - cameraOffsetX - player.getBitmap().getWidth() / 2, player.getY() - cameraOffsetY - player.getBitmap().getHeight() / 2);
 
         // 根据角色朝向进行翻转
         if (!player.isFacingRight()) {
@@ -512,18 +516,22 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             // 获取角色的 X 和 Y 坐标
             float playerX = player.getX();
             float playerY = player.getY();
-
+            float weaponX = playerX+ player.getWidth()/2;
+            float weaponY = playerY;
+            weapon.setX(weaponX);
+            weapon.setY(weaponY);
             // 将武器设置在角色上方
-            matrix.setTranslate(playerX, playerY + weapon.getHeight() * 2);  // 将武器放在角色头上
+            matrix.setTranslate(weaponX - cameraOffsetX , weaponY - cameraOffsetY  );  // 将武器放在角色头上 + weapon.getHeight() * 2
 
             // 如果武器角度在 90° 到 270° 之间（指向左边）
+
             if (weaponAngleDegrees > 90 && weaponAngleDegrees < 270) {
                 // 水平翻转武器图像
-                matrix.preScale(-1.0f, 1.0f, weapon.getWidth() / 2, weapon.getHeight() / 2);
+                matrix.preScale(1.0f, -1.0f, weapon.getWidth() / 2, weapon.getHeight() / 2);
             }
 
             // 旋转武器，使其指向最近敌人
-            matrix.postRotate(weaponAngleDegrees, playerX + weapon.getWidth() / 2, playerY + weapon.getHeight() * 2 + weapon.getHeight() / 2);
+            matrix.postRotate(weaponAngleDegrees, playerX - cameraOffsetX , playerY - cameraOffsetY);
 
             // 绘制旋转后的武器
             mCanvas.drawBitmap(weapon.getBitmap(), matrix, null);
@@ -539,11 +547,11 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         if (bulletFireCounter >= bulletFireInterval) {
             // 获取武器的 X 和 Y 坐标
             float weaponX = player.getX() + weapon.getWidth() / 2;
-            float weaponY = player.getY() + weapon.getHeight() * 2;
+            float weaponY = player.getY() ;
 
             // 根据武器角度计算子弹的起始位置，让子弹从武器的前端发射
-            float bulletStartX = weaponX + (float) Math.cos(initBulletAngle) * weapon.getWidth() + cameraOffsetX;
-            float bulletStartY = weaponY + (float) Math.sin(initBulletAngle) * weapon.getHeight() + cameraOffsetY;
+            float bulletStartX = weapon.getX() + (float) Math.cos(initBulletAngle) * weapon.getWidth();
+            float bulletStartY = weapon.getY() + (float) Math.sin(initBulletAngle) * weapon.getHeight();
 
             // 创建新的子弹并将其添加到子弹列表
             Bullet newBullet = new Bullet(bulletBitmap, (int) bulletStartX, (int) bulletStartY, bulletBitmap.getWidth(), bulletBitmap.getHeight(), 1,initBulletAngle);
