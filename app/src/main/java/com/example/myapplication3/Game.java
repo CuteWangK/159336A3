@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.media.MediaPlayer;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -27,7 +28,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         Finish
     }
     private Bitmap background_game, playerbitmap0, playerbitmap1, playerbitmap2, playerbitmap3, playerbitmap4, playerbitmap5, weaponbitmap,bulletBitmap;
-    private Bitmap enemybitmap0,enemybitmap1,enemybitmap2,enemybitmap3,enemybitmap4, enemybullet;
+    private Bitmap enemybitmap0,enemybitmap1,enemybitmap2,enemybitmap3,enemybitmap4;
     private Canvas mCanvas;
     private int ViewWith, ViewHeight;
     private SurfaceHolder surfaceHolder;
@@ -42,6 +43,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private Random random = new Random();
     private List<Bullet> bullets = new ArrayList<>();
     private int killCount = 0;
+    private MediaPlayer backgroundMusic;
     private States GameState = States.Start;
 
     public Game(Context context) {
@@ -77,7 +79,10 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         textPaint = new Paint();
         textPaint.setColor(Color.WHITE); // 设置文本颜色
         textPaint.setTextSize(60);  // 设置文本大小
-        textPaint.setTextAlign(Paint.Align.CENTER);  // 文本对齐方式设置为居中
+        textPaint.setTextAlign(Paint.Align.CENTER);// 文本对齐方式设置为居中
+        backgroundMusic = MediaPlayer.create(context, R.raw.background_music);  // 替换为你的音乐文件名
+        backgroundMusic.setLooping(true);  // 循环播放
+        backgroundMusic.start();
         surfaceHolder = getHolder();
         surfaceHolder.addCallback(this);
     }
@@ -123,6 +128,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         }
         new Thread(this).start();
     }
+
     public Bitmap getRatioBitmap(Bitmap bitmap, float dx, float dy){
         return Bitmap.createScaledBitmap(bitmap, (int)(bitmap.getWidth()*dx), (int)(bitmap.getHeight()*dy), true);
     }
@@ -135,6 +141,10 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     @Override
     public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
         isDraw = false;
+        if (backgroundMusic != null) {
+            backgroundMusic.stop();  // 停止音乐播放
+            backgroundMusic.release();  // 释放资源
+        }
     }
 
     private final int TARGET_FPS = 60;

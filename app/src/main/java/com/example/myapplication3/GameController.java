@@ -51,9 +51,9 @@ public class GameController extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        // 将摇杆放置在屏幕左下角，距离左边和下边有一定的偏移量
-        centerX = radius + 50;  // 距离屏幕左边 50px
-        centerY = getHeight() - (radius + 50);  // 距离屏幕底部 50px
+        // 设置摇杆的中心点为视图的中心
+        centerX = getWidth() / 2f;
+        centerY = getHeight() / 2f;
         handleX = centerX;
         handleY = centerY;
     }
