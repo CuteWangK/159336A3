@@ -5,12 +5,21 @@ import android.graphics.Bitmap;
 public class Figure extends Entity{
 
     int health;
-    int shield;
 
-    public Figure(Bitmap bitmap, int x, int y, int with, int height, int health, int shield) {
+    public boolean isFacingRight() {
+        return isFacingRight;
+    }
+
+    public void setFacingRight(boolean facingRight) {
+        isFacingRight = facingRight;
+    }
+
+    boolean isFacingRight;
+    public Figure(Bitmap bitmap, int x, int y, int with, int height, int health, boolean isFacingRight) {
         super(bitmap, x, y, with, height);
         this.health = health;
-        this.shield = shield;
+        this.isFacingRight = isFacingRight;
+
     }
 
     public int getHealth() {
@@ -21,11 +30,4 @@ public class Figure extends Entity{
         this.health = health;
     }
 
-    public int getShield() {
-        return shield;
-    }
-
-    public void setShield(int shield) {
-        this.shield = shield;
-    }
 }
