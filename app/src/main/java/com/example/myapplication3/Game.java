@@ -524,7 +524,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             matrix.setTranslate(weaponX - cameraOffsetX , weaponY - cameraOffsetY  );  // 将武器放在角色头上 + weapon.getHeight() * 2
 
             // 如果武器角度在 90° 到 270° 之间（指向左边）
-
+            weaponAngleDegrees = (weaponAngleDegrees % 360 + 360) % 360;
             if (weaponAngleDegrees > 90 && weaponAngleDegrees < 270) {
                 // 水平翻转武器图像
                 matrix.preScale(1.0f, -1.0f, weapon.getWidth() / 2, weapon.getHeight() / 2);
