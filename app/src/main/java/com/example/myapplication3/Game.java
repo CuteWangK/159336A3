@@ -494,8 +494,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             float weaponY = player.getY() + weapon.getHeight() * 2;
 
             // 根据武器角度计算子弹的起始位置，让子弹从武器的前端发射
-            float bulletStartX = weaponX + (float) Math.cos(initBulletAngle) * weapon.getWidth();
-            float bulletStartY = weaponY + (float) Math.sin(initBulletAngle) * weapon.getHeight();
+            float bulletStartX = weaponX + (float) Math.cos(initBulletAngle) * weapon.getWidth() + cameraOffsetX;
+            float bulletStartY = weaponY + (float) Math.sin(initBulletAngle) * weapon.getHeight() + cameraOffsetY;
 
             // 创建新的子弹并将其添加到子弹列表
             Bullet newBullet = new Bullet(bulletBitmap, (int) bulletStartX, (int) bulletStartY, bulletBitmap.getWidth(), bulletBitmap.getHeight(), 1,initBulletAngle);
