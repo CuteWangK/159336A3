@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.util.AttributeSet;
-import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import androidx.annotation.NonNull;
@@ -155,8 +154,24 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         enemyMove();
         weaponFire();
         updateBullets();
+        //updateDamage();
     }
-
+    private HashMap<Figure, Integer> EnemyDamageInterval = new HashMap<>();
+    private void updateDamage(){
+        for (Figure enemy : enemies){
+            if (!Collision(player,enemy)){
+                continue;
+            }
+            int Interval = EnemyDamageInterval.getOrDefault(enemy,0);
+            if (Interval > 0){
+                Interval -= 1;
+                EnemyDamageInterval.put(enemy,Interval);
+                continue;
+            }
+            player.health -= 1;
+            EnemyDamageInterval.put(enemy,6);
+        }
+    }
     private int bulletFireInterval = 15;  // 每30帧发射一次子弹
     private int bulletFireCounter = 0;    // 子弹发射计数器
 
@@ -166,8 +181,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
         for (Bullet bullet : bullets) {
             // 子弹方向通过Game类管理，而不是在Bullet类中
-            float dx = (float) Math.cos(bulletAngle) * bulletSpeed;
-            float dy = (float) Math.sin(bulletAngle) * bulletSpeed;
+            float dx = (float) Math.cos(bullet.Angle) * bulletSpeed;
+            float dy = (float) Math.sin(bullet.Angle) * bulletSpeed;
 
             // 更新子弹的位置
             bullet.setX((int) (bullet.getX() + dx));
@@ -196,10 +211,15 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     }
 
     private boolean isBulletCollidingWithEnemy(Bullet bullet, Figure enemy) {
-        return bullet.getX() < enemy.getX() + enemy.getWith() &&
-                bullet.getX() + bullet.getWith() > enemy.getX() &&
+        return bullet.getX() < enemy.getX() + enemy.getWidth() &&
+                bullet.getX() + bullet.getWidth() > enemy.getX() &&
                 bullet.getY() < enemy.getY() + enemy.getHeight() &&
                 bullet.getY() + bullet.getHeight() > enemy.getY();
+    }
+    private boolean Collision(Figure A, Figure B){
+        double Distance = Math.sqrt(Math.pow(B.getX() - A.getX(), 2) + Math.pow(B.getY() - A.getY(), 2));
+        double AverageD = (A.getWidth() + A.getHeight()) / 2f + (B.getWidth() + B.getHeight()) / 2f;
+        return Distance <= AverageD;
     }
 
 
@@ -212,7 +232,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             bulletAngle = (float) Math.atan2(dy, dx);  // 子弹的发射角度是根据最近敌人计算的
 
             // 发射子弹
-            fireBullet();
+            fireBullet(bulletAngle);
         }
     }
 
@@ -239,6 +259,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     int enemyBitmapData = 0;
     private HashMap<Figure, float[]> enemyDirections = new HashMap<>();
 
+
+
     private void enemyMove() {
         float minSpeed = -5.0f;  // 最小速度
         float maxSpeed = 5.0f;   // 最大速度
@@ -258,8 +280,13 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
                 // 获取敌人的当前移动方向
                 float[] direction = enemyDirections.get(enemy);
-                float dx = direction[0];
-                float dy = direction[1];
+                float dx = 0;
+                float dy = 0;
+                if (direction != null) {
+                    dx = direction[0];
+                    dy = direction[1];
+                }
+
 
                 // 更新敌人位置
                 enemy.setX(enemy.getX() + (int) dx);
@@ -277,8 +304,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
                     enemy.setX(0);
                     dx = Math.abs(dx);  // 反转 X 方向，向右移动
                 }
-                if (enemy.getX() + enemy.getWith() >= ViewWith) {
-                    enemy.setX(ViewWith - enemy.getWith());
+                if (enemy.getX() + enemy.getWidth() >= ViewWith) {
+                    enemy.setX(ViewWith - enemy.getWidth());
                     dx = -Math.abs(dx);  // 反转 X 方向，向左移动
                 }
                 if (enemy.getY() <= 0) {
@@ -444,11 +471,11 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             // 如果武器角度在 90° 到 270° 之间（指向左边）
             if (weaponAngleDegrees > 90 && weaponAngleDegrees < 270) {
                 // 水平翻转武器图像
-                matrix.preScale(-1.0f, 1.0f, weapon.getWith() / 2, weapon.getHeight() / 2);
+                matrix.preScale(-1.0f, 1.0f, weapon.getWidth() / 2, weapon.getHeight() / 2);
             }
 
             // 旋转武器，使其指向最近敌人
-            matrix.postRotate(weaponAngleDegrees, playerX + weapon.getWith() / 2, playerY + weapon.getHeight() * 2 + weapon.getHeight() / 2);
+            matrix.postRotate(weaponAngleDegrees, playerX + weapon.getWidth() / 2, playerY + weapon.getHeight() * 2 + weapon.getHeight() / 2);
 
             // 绘制旋转后的武器
             mCanvas.drawBitmap(weapon.getBitmap(), matrix, null);
@@ -459,19 +486,19 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
 
 
-    private void fireBullet() {
+    private void fireBullet(float initBulletAngle) {
         bulletFireCounter++;
         if (bulletFireCounter >= bulletFireInterval) {
             // 获取武器的 X 和 Y 坐标
-            float weaponX = player.getX() + weapon.getWith() / 2;
+            float weaponX = player.getX() + weapon.getWidth() / 2;
             float weaponY = player.getY() + weapon.getHeight() * 2;
 
             // 根据武器角度计算子弹的起始位置，让子弹从武器的前端发射
-            float bulletStartX = weaponX + (float) Math.cos(bulletAngle) * weapon.getWith();
-            float bulletStartY = weaponY + (float) Math.sin(bulletAngle) * weapon.getHeight();
+            float bulletStartX = weaponX + (float) Math.cos(initBulletAngle) * weapon.getWidth();
+            float bulletStartY = weaponY + (float) Math.sin(initBulletAngle) * weapon.getHeight();
 
             // 创建新的子弹并将其添加到子弹列表
-            Bullet newBullet = new Bullet(bulletBitmap, (int) bulletStartX, (int) bulletStartY, bulletBitmap.getWidth(), bulletBitmap.getHeight(), 1);
+            Bullet newBullet = new Bullet(bulletBitmap, (int) bulletStartX, (int) bulletStartY, bulletBitmap.getWidth(), bulletBitmap.getHeight(), 1,initBulletAngle);
 
             // 将新子弹添加到子弹列表
             bullets.add(newBullet);

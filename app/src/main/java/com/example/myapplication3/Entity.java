@@ -4,13 +4,13 @@ import android.graphics.Bitmap;
 
 public class Entity {
     Bitmap bitmap;
-    int x, y, with, height;
+    int x, y, width, height;
 
-    public Entity(Bitmap bitmap, int x, int y, int with, int height) {
+    public Entity(Bitmap bitmap, int x, int y, int width, int height) {
         this.bitmap = bitmap;
         this.x = x;
         this.y = y;
-        this.with = with;
+        this.width = width;
         this.height = height;
     }
 
@@ -38,12 +38,12 @@ public class Entity {
         this.y = y;
     }
 
-    public int getWith() {
-        return with;
+    public int getWidth() {
+        return width;
     }
 
-    public void setWith(int with) {
-        this.with = with;
+    public void setWidth(int width) {
+        this.width = width;
     }
 
     public int getHeight() {

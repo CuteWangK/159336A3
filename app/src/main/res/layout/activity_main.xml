@@ -18,11 +18,9 @@
         android:id="@+id/ControllerView"
         android:layout_width="150dp"
         android:layout_height="150dp"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-
-        tools:ignore="MissingConstraints" >
-    </com.example.myapplication3.GameController>
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:ignore="MissingConstraints"
+        />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
