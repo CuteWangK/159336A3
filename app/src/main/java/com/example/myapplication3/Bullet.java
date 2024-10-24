@@ -5,8 +5,8 @@ import android.graphics.Bitmap;
 public class Bullet extends Entity{
     int damage;
     float Angle;
-    public Bullet(Bitmap bitmap, int x, int y, int with, int height, int damage, float Angle) {
-        super(bitmap, x, y, with, height);
+    public Bullet(Bitmap bitmap, float x, float y, float width, float height, int damage, float Angle) {
+        super(bitmap, x, y, width, height);
         this.damage = damage;
         this.Angle = Angle;
     }

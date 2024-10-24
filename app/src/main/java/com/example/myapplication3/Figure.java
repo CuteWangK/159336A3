@@ -15,8 +15,8 @@ public class Figure extends Entity{
     }
 
     boolean isFacingRight;
-    public Figure(Bitmap bitmap, int x, int y, int with, int height, int health, boolean isFacingRight) {
-        super(bitmap, x, y, with, height);
+    public Figure(Bitmap bitmap, float x, float y, float width, float height, int health, boolean isFacingRight) {
+        super(bitmap, x, y, width, height);
         this.health = health;
         this.isFacingRight = isFacingRight;
 

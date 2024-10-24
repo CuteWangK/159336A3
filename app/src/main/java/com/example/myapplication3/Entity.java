@@ -6,7 +6,7 @@ public class Entity {
     Bitmap bitmap;
     float x, y, width, height;
 
-    public Entity(Bitmap bitmap, int x, int y, int width, int height) {
+    public Entity(Bitmap bitmap, float x, float y, float width, float height) {
         this.bitmap = bitmap;
         this.x = x;
         this.y = y;

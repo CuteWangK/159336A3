@@ -1,5 +1,6 @@
 package com.example.myapplication3;
 
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -10,17 +11,21 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.widget.Toast;
-
+import android.view.MotionEvent;
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-import android.widget.Toast;
 public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
+    enum States {
+        Start,
+        Playing,
+        Pause,
+        Finish
+    }
     private Bitmap background_game, playerbitmap0, playerbitmap1, playerbitmap2, playerbitmap3, playerbitmap4, playerbitmap5, weaponbitmap,bulletBitmap;
     private Bitmap enemybitmap0,enemybitmap1,enemybitmap2,enemybitmap3,enemybitmap4, enemybullet;
     private Canvas mCanvas;
@@ -37,6 +42,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private Random random = new Random();
     private List<Bullet> bullets = new ArrayList<>();
     private int killCount = 0;
+    private States GameState = States.Start;
 
     public Game(Context context) {
         super(context);
@@ -99,21 +105,24 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         enemybitmap2 = getRatioBitmap(enemybitmap2,2.5f,2.5f);
         enemybitmap3 = getRatioBitmap(enemybitmap3,2.5f,2.5f);
         enemybitmap4 = getRatioBitmap(enemybitmap4,2.5f,2.5f);
+        initGame();
+    }
+    private void initGame(){
         background = new Entity(background_game,0,0,background_game.getWidth(),background_game.getHeight());
-        player = new Figure(playerbitmap0, ViewWith/2 - playerbitmap0.getWidth()/2,ViewHeight/2-playerbitmap0.getHeight()/2, playerbitmap0.getWidth(), playerbitmap0.getHeight(), 10, true);
-        weapon = new Entity(weaponbitmap,ViewWith/2-weaponbitmap.getWidth()/2,ViewHeight/2-weaponbitmap.getWidth()/2,weaponbitmap.getWidth(),weaponbitmap.getHeight());
-        //pBullet = new Bullet(bulletBitmap,ViewWith/2-weaponbitmap.getWidth()/2,ViewHeight/2-weaponbitmap.getWidth()/2, bulletBitmap.getWidth(),bulletBitmap.getHeight(), 1);
+        player = new Figure(playerbitmap0, (float) ViewWith /2, (float) ViewHeight /2, playerbitmap0.getWidth(), playerbitmap0.getHeight(), 10, true);
+        weapon = new Entity(weaponbitmap, (float) ViewWith /2, (float) ViewHeight /2,weaponbitmap.getWidth(),weaponbitmap.getHeight());
         int numberOfEnemies = 5;
-        for (int i = 0; i < numberOfEnemies; i++) {
-            // 在随机位置生成怪物
-            int randomX = random.nextInt(ViewWith - enemybitmap0.getWidth());
-            int randomY = random.nextInt(ViewHeight - enemybitmap0.getHeight());
-            Figure enemy = new Figure(enemybitmap0, randomX, randomY, enemybitmap0.getWidth(), enemybitmap0.getHeight(), 10, true);
-            enemies.add(enemy);  // 添加怪物到集合中
+        if (enemies.isEmpty()) {
+            for (int i = 0; i < numberOfEnemies; i++) {
+
+                int randomX = random.nextInt(ViewWith - enemybitmap0.getWidth());
+                int randomY = random.nextInt(ViewHeight - enemybitmap0.getHeight());
+                Figure enemy = new Figure(enemybitmap0, randomX, randomY, enemybitmap0.getWidth(), enemybitmap0.getHeight(), 10, true);
+                enemies.add(enemy);
+            }
         }
         new Thread(this).start();
     }
-
     public Bitmap getRatioBitmap(Bitmap bitmap, float dx, float dy){
         return Bitmap.createScaledBitmap(bitmap, (int)(bitmap.getWidth()*dx), (int)(bitmap.getHeight()*dy), true);
     }
@@ -140,7 +149,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
             // 绘制和更新游戏
             drawMain();
-            update();
+            if (GameState.equals(States.Playing))
+                update();
 
             // 计算帧时间和休眠时间
             timeDiff = System.currentTimeMillis() - startTime;
@@ -165,7 +175,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         weaponFire();
         updateBullets();
         updateEnemy();
-        //updateDamage();
+        updateDamage();
     }
     int count = 0;
     private void updateEnemy() {
@@ -199,6 +209,12 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private HashMap<Figure, Integer> EnemyDamageInterval = new HashMap<>();
     private void updateDamage(){
         for (Figure enemy : enemies){
+            if (enemy.getHealth() <= 0){
+                continue;
+            }
+            if (player.getHealth() <= 0){
+                continue;
+            }
             if (!Collision(player,enemy)){
                 continue;
             }
@@ -208,8 +224,11 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
                 EnemyDamageInterval.put(enemy,Interval);
                 continue;
             }
-            player.health -= 1;
-            EnemyDamageInterval.put(enemy,6);
+            player.setHealth(player.getHealth() - 1);
+            EnemyDamageInterval.put(enemy,60);
+            if (player.getHealth() <= 0 ){
+                GameState = States.Finish;
+            }
         }
     }
     private int bulletFireInterval = 15;  // 每30帧发射一次子弹
@@ -260,7 +279,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     }
     private boolean Collision(Figure A, Figure B){
         double Distance = Math.sqrt(Math.pow(B.getX() - A.getX(), 2) + Math.pow(B.getY() - A.getY(), 2));
-        double AverageD = (A.getWidth() + A.getHeight()) / 2f + (B.getWidth() + B.getHeight()) / 2f;
+        double AverageD = (A.getWidth() + A.getHeight()) / 4f + (B.getWidth() + B.getHeight()) / 4f;
         return Distance <= AverageD;
     }
 
@@ -283,7 +302,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         float nearestDistance = Float.MAX_VALUE;
 
         for (Figure enemy : enemies) {
-            if (enemy.getHealth() > 0) {  // 只考虑存活的敌人
+            if (enemy.getHealth() > 0) {
                 float distance = calculateDistance(player.getX(), player.getY(), enemy.getX(), enemy.getY());
                 if (distance < nearestDistance) {
                     nearestEnemy = enemy;
@@ -390,19 +409,244 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
     private void drawMain() {
         mCanvas = surfaceHolder.lockCanvas();
-        drawBackground();
-        drawPlayer();
-        drawWeapon();
-        drawBullet();
-        drawEnemy();
-        drawKillCount();
+        if (GameState==States.Playing || GameState==States.Pause){
+            drawBackground();
+            drawPlayer();
+            drawWeapon();
+            drawBullet();
+            drawEnemy();
+            drawKillCount();
+            drawPauseButton();
+        }
+        if (GameState == States.Pause){
+            drawPause();
+        }
+        if (GameState == States.Start){
+            drawStart();
+        }
+        if (GameState == States.Finish){
+            drawFinish();
+        }
         surfaceHolder.unlockCanvasAndPost(mCanvas);
     }
 
+    private void drawFinish() {
+        Paint paint = new Paint();
+        paint.setColor(Color.BLACK); // 背景颜色
+        mCanvas.drawColor(Color.LTGRAY); // 设置完成页面的背景颜色
+
+        // 设置按钮的宽度和高度
+        int buttonWidth = 300;
+        int buttonHeight = 100;
+
+        // 计算按钮的 X 和 Y 坐标
+        int restartButtonX = (getWidth() - buttonWidth) / 2; // 居中
+        int restartButtonY = getHeight() / 2 - buttonHeight - 20; // 上面的按钮
+
+        int backButtonX = (getWidth() - buttonWidth) / 2; // 居中
+        int backButtonY = getHeight() / 2 + 20; // 下面的按钮
+
+        // 绘制重启按钮
+        paint.setColor(Color.GREEN); // 设置重启按钮颜色
+        mCanvas.drawRect(restartButtonX, restartButtonY, restartButtonX + buttonWidth, restartButtonY + buttonHeight, paint);
+        paint.setColor(Color.WHITE); // 设置字体颜色为白色
+        paint.setTextSize(40);
+        mCanvas.drawText("Restart", restartButtonX + (buttonWidth / 4), restartButtonY + (buttonHeight / 2) + 10, paint);
+
+        // 绘制返回开始按钮
+        paint.setColor(Color.BLUE); // 设置返回开始按钮颜色
+        mCanvas.drawRect(backButtonX, backButtonY, backButtonX + buttonWidth, backButtonY + buttonHeight, paint);
+        paint.setColor(Color.WHITE); // 设置字体颜色为白色
+        mCanvas.drawText("Back to Start", backButtonX + (buttonWidth / 12), backButtonY + (buttonHeight / 2) + 10, paint);
+    }
+
+
+    private void drawStart() {
+        // 绘制背景颜色
+        mCanvas.drawColor(Color.BLACK); // 设置背景为黑色
+
+        // 创建画笔
+        Paint startPaint = new Paint();
+        startPaint.setColor(Color.WHITE); // 设置文本颜色为白色
+        startPaint.setTextSize(100);  // 设置标题文本大小
+        startPaint.setTextAlign(Paint.Align.CENTER);  // 文本对齐方式设置为居中
+
+        // 绘制游戏标题
+        mCanvas.drawText("Welcome to My Game!", mCanvas.getWidth() / 2, mCanvas.getHeight() / 2 - 100, startPaint);
+
+        // 绘制说明文本
+        startPaint.setTextSize(50); // 设置说明文本大小
+        mCanvas.drawText("Tap to Start", mCanvas.getWidth() / 2, mCanvas.getHeight() / 2 + 50, startPaint);
+
+        // 绘制开始按钮
+        int buttonWidth = 400;
+        int buttonHeight = 150;
+        int buttonX = (mCanvas.getWidth() - buttonWidth) / 2;
+        int buttonY = mCanvas.getHeight() / 2 + 150;
+
+        // 绘制按钮矩形
+        startPaint.setColor(Color.BLUE);
+        mCanvas.drawRect(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, startPaint);
+
+        // 绘制按钮上的文本
+        startPaint.setColor(Color.WHITE);
+        startPaint.setTextSize(80);
+        mCanvas.drawText("Start", mCanvas.getWidth() / 2, buttonY + buttonHeight / 2 + 30, startPaint);
+    }
+    private void drawPauseButton() {
+        Paint paint = new Paint();
+        paint.setColor(Color.RED); // 设置按钮颜色为红色
+
+        // 定义按钮的宽度和高度
+        int buttonWidth = 150;
+        int buttonHeight = 150;
+
+        // 定义按钮的位置（右上角）
+        int buttonX = getWidth() - buttonWidth - 50; // 距离右边的距离
+        int buttonY = 50; // 距离顶部的距离
+
+        // 绘制按钮的矩形
+        mCanvas.drawRect(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, paint);
+
+        // 绘制暂停符号（两个竖条）
+        paint.setColor(Color.WHITE); // 设置符号颜色为白色
+        int barWidth = 20;
+        int barHeight = 80;
+
+        // 绘制左边的竖条
+        mCanvas.drawRect(buttonX + (buttonWidth / 4) - (barWidth / 2),
+                buttonY + (buttonHeight / 2) - (barHeight / 2),
+                buttonX + (buttonWidth / 4) + (barWidth / 2),
+                buttonY + (buttonHeight / 2) + (barHeight / 2), paint);
+
+        // 绘制右边的竖条
+        mCanvas.drawRect(buttonX + (3 * buttonWidth / 4) - (barWidth / 2),
+                buttonY + (buttonHeight / 2) - (barHeight / 2),
+                buttonX + (3 * buttonWidth / 4) + (barWidth / 2),
+                buttonY + (buttonHeight / 2) + (barHeight / 2), paint);
+    }
+
+
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (GameState == States.Finish && event.getAction() == MotionEvent.ACTION_DOWN) {
+            float x = event.getX();
+            float y = event.getY();
+
+            int buttonWidth = 300;
+            int buttonHeight = 100;
+            int restartButtonX = (getWidth() - buttonWidth) / 2;
+            int restartButtonY = getHeight() / 2 - buttonHeight - 20;
+
+            if (x >= restartButtonX && x <= restartButtonX + buttonWidth &&
+                    y >= restartButtonY && y <= restartButtonY + buttonHeight) {
+                GameState = States.Playing;
+                initGame();
+            }
+
+            int backButtonX = (getWidth() - buttonWidth) / 2;
+            int backButtonY = getHeight() / 2 + 20;
+
+            if (x >= backButtonX && x <= backButtonX + buttonWidth &&
+                    y >= backButtonY && y <= backButtonY + buttonHeight) {
+
+                GameState = States.Start;
+            }
+        }
+        if (GameState == States.Playing && event.getAction() == MotionEvent.ACTION_DOWN) {
+            float x = event.getX();
+            float y = event.getY();
+
+            // 定义暂停按钮的位置
+            int buttonWidth = 150;
+            int buttonHeight = 150;
+            int buttonX = getWidth() - buttonWidth - 50; // 距离右边的距离
+            int buttonY = 50; // 距离顶部的距离
+
+            // 检查是否触摸了暂停按钮的区域
+            if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
+                // 用户点击了按钮，切换到暂停状态
+                if (GameState == States.Playing) {
+                    GameState = States.Pause; // 切换到暂停状态
+                } else if (GameState == States.Pause) {
+                    GameState = States.Playing; // 切换回游戏状态
+                }
+            }
+        }
+        if (GameState == States.Start && event.getAction() == MotionEvent.ACTION_DOWN) {
+            // 获取触摸的 x 和 y 坐标
+            float x = event.getX();
+            float y = event.getY();
+
+            // 检查是否触摸了开始按钮的区域
+            int buttonWidth = 400;
+            int buttonHeight = 150;
+            int buttonX = (getWidth() - buttonWidth) / 2;
+            int buttonY = getHeight() / 2 + 150; // 确保与 drawStart 中的 Y 坐标一致
+
+            if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
+                // 用户点击了按钮，开始游戏
+                GameState = States.Playing;
+                initGame();
+            }
+        }
+        if (GameState == States.Pause && event.getAction() == MotionEvent.ACTION_DOWN) {
+            // 获取触摸的 x 和 y 坐标
+            float x = event.getX();
+            float y = event.getY();
+
+            // 检查是否触摸了按钮的区域
+            int buttonWidth = 400;
+            int buttonHeight = 150;
+            int buttonX = (getWidth() - buttonWidth) / 2;
+            int buttonY = getHeight() / 2 + 50;
+
+            if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
+                // 用户点击了按钮，恢复游戏
+                GameState = States.Playing;
+            }
+        }
+
+        return true;
+    }
+    private void drawPause() {
+        Paint pausePaint = new Paint();
+
+        pausePaint.setColor(Color.BLACK);
+        pausePaint.setAlpha(128);  // 设置半透明
+        mCanvas.drawRect(0, 0, mCanvas.getWidth(), mCanvas.getHeight(), pausePaint);
+
+        pausePaint.setColor(Color.WHITE);
+        pausePaint.setAlpha(255);  // 设置为不透明
+        pausePaint.setTextSize(100);
+        pausePaint.setTextAlign(Paint.Align.CENTER);
+        mCanvas.drawText("Game Paused", mCanvas.getWidth() / 2, mCanvas.getHeight() / 2 - 100, pausePaint);
+
+        // 3. 绘制按钮
+        int buttonWidth = 400;
+        int buttonHeight = 150;
+        int buttonX = (mCanvas.getWidth() - buttonWidth) / 2;
+        int buttonY = mCanvas.getHeight() / 2 + 50;
+
+        // 绘制按钮矩形
+        pausePaint.setColor(Color.BLUE);
+        mCanvas.drawRect(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, pausePaint);
+
+        // 绘制按钮上的文本
+        pausePaint.setColor(Color.WHITE);
+        pausePaint.setTextSize(80);
+        mCanvas.drawText("Resume", mCanvas.getWidth() / 2, buttonY + buttonHeight / 2 + 30, pausePaint);
+    }
+
+
+
     private void drawKillCount() {
+        String HealthText = "Health: " + player.getHealth();
         String killText = "KILLS: " + killCount;
         // 在屏幕顶部中间绘制击杀数量
-        mCanvas.drawText(killText, ViewWith / 2, 100, textPaint);
+        mCanvas.drawText(HealthText, 200, 100, textPaint);
+        mCanvas.drawText(killText, (float) ViewWith / 2, 100, textPaint);
     }
 
     private void drawEnemy() {
@@ -411,11 +655,11 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
             // 先进行翻转操作，再设置平移
             if (!enemy.isFacingRight()) {
-                matrix.preScale(-1.0f, 1.0f, enemy.getBitmap().getWidth() / 2, enemy.getBitmap().getHeight() / 2);  // 基于中心点翻转
+                matrix.preScale(-1.0f, 1.0f, (float) enemy.getBitmap().getWidth() / 2, (float) enemy.getBitmap().getHeight() / 2);  // 基于中心点翻转
             }
 
             // 设置平移，将敌人绘制在正确的位置
-            matrix.setTranslate(enemy.getX() - cameraOffsetX, enemy.getY() - cameraOffsetY);
+            matrix.setTranslate(enemy.getX() - cameraOffsetX - enemy.getWidth() / 2, enemy.getY() - cameraOffsetY - enemy.getHeight() / 2);
 
             // 绘制当前动画帧
             mCanvas.drawBitmap(enemy.getBitmap(), matrix, null);
@@ -483,11 +727,10 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         Matrix matrix = new Matrix();
 
         // 始终将角色绘制在屏幕中央，而不是基于角色的X、Y坐标
-        matrix.setTranslate(player.getX() - cameraOffsetX - player.getBitmap().getWidth() / 2, player.getY() - cameraOffsetY - player.getBitmap().getHeight() / 2);
+        matrix.setTranslate(player.getX() - cameraOffsetX - player.getWidth() / 2, player.getY() - cameraOffsetY - player.getHeight() / 2);
 
-        // 根据角色朝向进行翻转
         if (!player.isFacingRight()) {
-            matrix.preScale(-1.0f, 1.0f, player.getBitmap().getWidth() / 2, player.getBitmap().getHeight() / 2);
+            matrix.preScale(-1.0f, 1.0f, (float) player.getBitmap().getWidth() / 2, (float) player.getBitmap().getHeight() / 2);
         }
 
         // 绘制玩家
@@ -516,7 +759,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             // 获取角色的 X 和 Y 坐标
             float playerX = player.getX();
             float playerY = player.getY();
-            float weaponX = playerX+ player.getWidth()/2;
+            float weaponX = playerX + player.getWidth()/2;
             float weaponY = playerY;
             weapon.setX(weaponX);
             weapon.setY(weaponY);
@@ -524,7 +767,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             matrix.setTranslate(weaponX - cameraOffsetX , weaponY - cameraOffsetY  );  // 将武器放在角色头上 + weapon.getHeight() * 2
 
             // 如果武器角度在 90° 到 270° 之间（指向左边）
-            weaponAngleDegrees = (weaponAngleDegrees % 360 + 360) % 360;
+            weaponAngleDegrees = normalizeAngle(weaponAngleDegrees);
             if (weaponAngleDegrees > 90 && weaponAngleDegrees < 270) {
                 // 水平翻转武器图像
                 matrix.preScale(1.0f, -1.0f, weapon.getWidth() / 2, weapon.getHeight() / 2);
@@ -538,7 +781,9 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         }
     }
 
-
+    private float normalizeAngle(float angle) {
+        return (angle % 360 + 360) % 360;
+    }
 
 
 
@@ -546,15 +791,12 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         bulletFireCounter++;
         if (bulletFireCounter >= bulletFireInterval) {
             // 获取武器的 X 和 Y 坐标
-            float weaponX = player.getX() + weapon.getWidth() / 2;
-            float weaponY = player.getY() ;
 
             // 根据武器角度计算子弹的起始位置，让子弹从武器的前端发射
             float bulletStartX = weapon.getX() + (float) Math.cos(initBulletAngle) * weapon.getWidth();
             float bulletStartY = weapon.getY() + (float) Math.sin(initBulletAngle) * weapon.getHeight();
-
             // 创建新的子弹并将其添加到子弹列表
-            Bullet newBullet = new Bullet(bulletBitmap, (int) bulletStartX, (int) bulletStartY, bulletBitmap.getWidth(), bulletBitmap.getHeight(), 1,initBulletAngle);
+            Bullet newBullet = new Bullet(bulletBitmap,bulletStartX,bulletStartY, bulletBitmap.getWidth(), bulletBitmap.getHeight(), 1,initBulletAngle);
 
             // 将新子弹添加到子弹列表
             bullets.add(newBullet);
@@ -567,7 +809,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
     private void drawBullet() {
         for (Bullet bullet : bullets) {
-            mCanvas.drawBitmap(bullet.getBitmap(), bullet.getX() - cameraOffsetX, bullet.getY() - cameraOffsetY, null);
+            mCanvas.drawBitmap(bullet.getBitmap(), bullet.getX() - cameraOffsetX - bullet.getWidth()/2 , bullet.getY() - cameraOffsetY - bullet.getHeight()/2, null);
         }
     }
 
