@@ -4,7 +4,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -32,6 +34,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private List<Figure> enemies = new ArrayList<>();  // 怪物集合
     private Random random = new Random();
     private List<Bullet> bullets = new ArrayList<>();
+    private int killCount = 0;
+
     public Game(Context context) {
         super(context);
         initView(context);
@@ -46,7 +50,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         super(context, attrs, defStyleAttr);
         initView(context);
     }
-
+    private Paint textPaint;
     private void initView(Context context) {
         background_game = BitmapFactory.decodeResource(context.getResources(),R.drawable.background);
         playerbitmap0 = BitmapFactory.decodeResource(context.getResources(),R.drawable.player0);
@@ -62,6 +66,10 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         enemybitmap2 = BitmapFactory.decodeResource(context.getResources(),R.drawable.e2);
         enemybitmap3 = BitmapFactory.decodeResource(context.getResources(),R.drawable.e3);
         enemybitmap4 = BitmapFactory.decodeResource(context.getResources(),R.drawable.e4);
+        textPaint = new Paint();
+        textPaint.setColor(Color.WHITE); // 设置文本颜色
+        textPaint.setTextSize(60);  // 设置文本大小
+        textPaint.setTextAlign(Paint.Align.CENTER);  // 文本对齐方式设置为居中
         surfaceHolder = getHolder();
         surfaceHolder.addCallback(this);
     }
@@ -154,8 +162,38 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         enemyMove();
         weaponFire();
         updateBullets();
+        updateEnemy();
         //updateDamage();
     }
+    int count = 0;
+    private void updateEnemy() {
+        boolean allEnemiesDead = true;
+
+        for (Figure enemy : enemies) {
+            if (enemy.getHealth() > 0) {
+                allEnemiesDead = false;
+                break;
+            }
+        }
+
+        if (allEnemiesDead) {
+            enemies.clear();
+            count++;
+            respawnEnemies();  // 重新生成敌人
+        }
+    }
+    private void respawnEnemies() {
+        int numberOfEnemies = 5 + count;  // 可以根据需要调整生成敌人的数量
+        for (int i = 0; i < numberOfEnemies; i++) {
+            // 在随机位置生成敌人
+            int randomX = random.nextInt(ViewWith - enemybitmap0.getWidth());
+            int randomY = random.nextInt(ViewHeight - enemybitmap0.getHeight());
+            Figure enemy = new Figure(enemybitmap0, randomX, randomY, enemybitmap0.getWidth(), enemybitmap0.getHeight(), 10, true);
+            enemies.add(enemy);  // 添加敌人到集合中
+        }
+    }
+
+
     private HashMap<Figure, Integer> EnemyDamageInterval = new HashMap<>();
     private void updateDamage(){
         for (Figure enemy : enemies){
@@ -198,7 +236,9 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
                 if (enemy.getHealth() > 0 && isBulletCollidingWithEnemy(bullet, enemy)) {
                     // 减少敌人的健康值
                     enemy.setHealth(enemy.getHealth() - bullet.getDamage());
-
+                    if (enemy.getHealth() <= 0) {
+                        killCount++;  // 增加击杀数量
+                    }
                     // 子弹击中敌人后消失
                     bulletsToRemove.add(bullet);
                     break;
@@ -353,8 +393,16 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         drawWeapon();
         drawBullet();
         drawEnemy();
+        drawKillCount();
         surfaceHolder.unlockCanvasAndPost(mCanvas);
     }
+
+    private void drawKillCount() {
+        String killText = "KILLS: " + killCount;
+        // 在屏幕顶部中间绘制击杀数量
+        mCanvas.drawText(killText, ViewWith / 2, 100, textPaint);
+    }
+
     private void drawEnemy() {
         for (Figure enemy : enemies) {
             Matrix matrix = new Matrix();
@@ -514,5 +562,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             mCanvas.drawBitmap(bullet.getBitmap(), bullet.getX() - cameraOffsetX, bullet.getY() - cameraOffsetY, null);
         }
     }
+
+
 
 }
