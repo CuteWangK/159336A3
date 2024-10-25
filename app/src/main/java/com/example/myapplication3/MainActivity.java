@@ -19,9 +19,7 @@ public class MainActivity extends AppCompatActivity {
         gameView = findViewById(R.id.GameView);
         gameController = findViewById(R.id.ControllerView);
 
-        // 将 GameController 的输入传递给 Game
+        // set Controller
         gameView.setGameController(gameController);
-
     }
-
 }

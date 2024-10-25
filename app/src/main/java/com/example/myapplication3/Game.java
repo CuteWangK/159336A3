@@ -43,8 +43,10 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private Random random = new Random();
     private List<Bullet> bullets = new ArrayList<>();
     private int killCount = 0;
-    private MediaPlayer backgroundMusic;
+    MediaPlayer backgroundMusic;
     private States GameState = States.Start;
+    private Thread gameThread;
+    private boolean isRunning = true;
 
     public Game(Context context) {
         super(context);
@@ -60,6 +62,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         super(context, attrs, defStyleAttr);
         initView(context);
     }
+
     private Paint textPaint;
     private void initView(Context context) {
         background_game = BitmapFactory.decodeResource(context.getResources(),R.drawable.background);
@@ -77,11 +80,11 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         enemybitmap3 = BitmapFactory.decodeResource(context.getResources(),R.drawable.e3);
         enemybitmap4 = BitmapFactory.decodeResource(context.getResources(),R.drawable.e4);
         textPaint = new Paint();
-        textPaint.setColor(Color.WHITE); // 设置文本颜色
-        textPaint.setTextSize(60);  // 设置文本大小
-        textPaint.setTextAlign(Paint.Align.CENTER);// 文本对齐方式设置为居中
-        backgroundMusic = MediaPlayer.create(context, R.raw.background_music);  // 替换为你的音乐文件名
-        backgroundMusic.setLooping(true);  // 循环播放
+        textPaint.setColor(Color.WHITE);
+        textPaint.setTextSize(60);
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        backgroundMusic = MediaPlayer.create(context, R.raw.background_music);
+        backgroundMusic.setLooping(true);
         backgroundMusic.start();
         surfaceHolder = getHolder();
         surfaceHolder.addCallback(this);
@@ -117,16 +120,20 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         player = new Figure(playerbitmap0, (float) ViewWith /2, (float) ViewHeight /2, playerbitmap0.getWidth(), playerbitmap0.getHeight(), 10, true);
         weapon = new Entity(weaponbitmap, (float) ViewWith /2, (float) ViewHeight /2,weaponbitmap.getWidth(),weaponbitmap.getHeight());
         int numberOfEnemies = 5;
-        if (enemies.isEmpty()) {
-            for (int i = 0; i < numberOfEnemies; i++) {
+        enemies.clear();
+        cameraOffsetX = 0;
+        cameraOffsetY = 0;
+        killCount = 0;
+        for (int i = 0; i < numberOfEnemies; i++) {
 
-                int randomX = random.nextInt(ViewWith - enemybitmap0.getWidth());
-                int randomY = random.nextInt(ViewHeight - enemybitmap0.getHeight());
-                Figure enemy = new Figure(enemybitmap0, randomX, randomY, enemybitmap0.getWidth(), enemybitmap0.getHeight(), 10, true);
-                enemies.add(enemy);
-            }
+            int randomX = random.nextInt(ViewWith - enemybitmap0.getWidth());
+            int randomY = random.nextInt(ViewHeight - enemybitmap0.getHeight());
+            Figure enemy = new Figure(enemybitmap0, randomX, randomY, enemybitmap0.getWidth(), enemybitmap0.getHeight(), 10, true);
+            enemies.add(enemy);
         }
-        new Thread(this).start();
+
+        gameThread = new Thread(this);
+        gameThread.start();
     }
 
     public Bitmap getRatioBitmap(Bitmap bitmap, float dx, float dy){
@@ -141,9 +148,78 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     @Override
     public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
         isDraw = false;
+
+        // release Thread
+        if (gameThread != null) {
+            try {
+                gameThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            gameThread = null;
+        }
+
         if (backgroundMusic != null) {
-            backgroundMusic.stop();  // 停止音乐播放
-            backgroundMusic.release();  // 释放资源
+            backgroundMusic.stop();
+            backgroundMusic.release();
+            backgroundMusic = null;
+        }
+
+        if (background_game != null) {
+            background_game.recycle();
+            background_game = null;
+        }
+        if (playerbitmap0 != null) {
+            playerbitmap0.recycle();
+            playerbitmap0 = null;
+        }
+        if (playerbitmap1 != null) {
+            playerbitmap1.recycle();
+            playerbitmap1 = null;
+        }
+        if (playerbitmap2 != null) {
+            playerbitmap2.recycle();
+            playerbitmap2 = null;
+        }
+        if (playerbitmap3 != null) {
+            playerbitmap3.recycle();
+            playerbitmap3 = null;
+        }
+        if (playerbitmap4 != null) {
+            playerbitmap4.recycle();
+            playerbitmap4 = null;
+        }
+        if (playerbitmap5 != null) {
+            playerbitmap5.recycle();
+            playerbitmap5 = null;
+        }
+        if (weaponbitmap != null) {
+            weaponbitmap.recycle();
+            weaponbitmap = null;
+        }
+        if (bulletBitmap != null) {
+            bulletBitmap.recycle();
+            bulletBitmap = null;
+        }
+        if (enemybitmap0 != null) {
+            enemybitmap0.recycle();
+            enemybitmap0 = null;
+        }
+        if (enemybitmap1 != null) {
+            enemybitmap1.recycle();
+            enemybitmap1 = null;
+        }
+        if (enemybitmap2 != null) {
+            enemybitmap2.recycle();
+            enemybitmap2 = null;
+        }
+        if (enemybitmap3 != null) {
+            enemybitmap3.recycle();
+            enemybitmap3 = null;
+        }
+        if (enemybitmap4 != null) {
+            enemybitmap4.recycle();
+            enemybitmap4 = null;
         }
     }
 
@@ -157,16 +233,18 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         while (isDraw) {
             startTime = System.currentTimeMillis();
 
-            // 绘制和更新游戏
+            // draw
             drawMain();
-            if (GameState.equals(States.Playing))
-                update();
 
-            // 计算帧时间和休眠时间
+            //update
+            if (GameState.equals(States.Playing)) {
+                update();
+            }
+
             timeDiff = System.currentTimeMillis() - startTime;
             sleepTime = FRAME_PERIOD - timeDiff;
 
-            // 如果时间不足，等待一段时间
+            // Frame rate control
             if (sleepTime > 0) {
                 try {
                     Thread.sleep(sleepTime);
@@ -201,17 +279,17 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         if (allEnemiesDead) {
             enemies.clear();
             count++;
-            respawnEnemies();  // 重新生成敌人
+            respawnEnemies();
         }
     }
     private void respawnEnemies() {
-        int numberOfEnemies = 5 + count;  // 可以根据需要调整生成敌人的数量
+        int numberOfEnemies = 5 + count;
         for (int i = 0; i < numberOfEnemies; i++) {
-            // 在随机位置生成敌人
+            //random generate
             int randomX = random.nextInt(ViewWith - enemybitmap0.getWidth());
             int randomY = random.nextInt(ViewHeight - enemybitmap0.getHeight());
             Figure enemy = new Figure(enemybitmap0, randomX, randomY, enemybitmap0.getWidth(), enemybitmap0.getHeight(), 10, true);
-            enemies.add(enemy);  // 添加敌人到集合中
+            enemies.add(enemy);
         }
     }
 
@@ -241,43 +319,40 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             }
         }
     }
-    private int bulletFireInterval = 15;  // 每30帧发射一次子弹
-    private int bulletFireCounter = 0;    // 子弹发射计数器
+    private int bulletFireInterval = 15;
+    private int bulletFireCounter = 0;
 
     private void updateBullets() {
-        float bulletSpeed = 10.0f;  // 子弹的速度
+        float bulletSpeed = 10.0f;
         List<Bullet> bulletsToRemove = new ArrayList<>();
 
         for (Bullet bullet : bullets) {
-            // 子弹方向通过Game类管理，而不是在Bullet类中
             float dx = (float) Math.cos(bullet.Angle) * bulletSpeed;
             float dy = (float) Math.sin(bullet.Angle) * bulletSpeed;
 
-            // 更新子弹的位置
             bullet.setX((int) (bullet.getX() + dx));
             bullet.setY((int) (bullet.getY() + dy));
 
-            // 检查子弹是否超出屏幕范围
+            // out of view
             if (bullet.getX() < 0 || bullet.getX() > ViewWith || bullet.getY() < 0 || bullet.getY() > ViewHeight) {
-                bulletsToRemove.add(bullet);  // 标记待移除的子弹
+                bulletsToRemove.add(bullet);  // add to remove list
             }
 
-            // 检查子弹与敌人的碰撞
             for (Figure enemy : enemies) {
                 if (enemy.getHealth() > 0 && isBulletCollidingWithEnemy(bullet, enemy)) {
-                    // 减少敌人的健康值
+
                     enemy.setHealth(enemy.getHealth() - bullet.getDamage());
                     if (enemy.getHealth() <= 0) {
-                        killCount++;  // 增加击杀数量
+                        killCount++;
                     }
-                    // 子弹击中敌人后消失
+                    // add to remove list
                     bulletsToRemove.add(bullet);
                     break;
                 }
             }
         }
 
-        // 移除被标记的子弹
+        //destroy bullet
         bullets.removeAll(bulletsToRemove);
     }
 
@@ -297,12 +372,11 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private void weaponFire() {
         Figure nearestEnemy = findNearestEnemy();
         if (nearestEnemy != null) {
-            // 计算武器指向最近敌人的角度
+            //calculate Angle
             float dx = nearestEnemy.getX() - player.getX();
             float dy = nearestEnemy.getY() - player.getY();
-            bulletAngle = (float) Math.atan2(dy, dx);  // 子弹的发射角度是根据最近敌人计算的
+            bulletAngle = (float) Math.atan2(dy, dx);
 
-            // 发射子弹
             fireBullet(bulletAngle);
         }
     }
@@ -333,23 +407,21 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
 
     private void enemyMove() {
-        float minSpeed = -5.0f;  // 最小速度
-        float maxSpeed = 5.0f;   // 最大速度
-        int directionChangeInterval = 60;  // 每60帧改变一次方向
+        float minSpeed = -5.0f;
+        float maxSpeed = 5.0f;
+        int directionChangeInterval = 60;
 
         for (Figure enemy : enemies) {
             if (enemy.getHealth() > 0) {
-                // 如果当前帧数达到方向变化的间隔，重新生成方向
+
                 if (enemyChangeBitmapTime % directionChangeInterval == 0 || !enemyDirections.containsKey(enemy)) {
-                    // 为每个敌人生成随机的 X 和 Y 移动速度（范围从 -5 到 5）
+
                     float dx = minSpeed + (random.nextFloat() * (maxSpeed - minSpeed));
                     float dy = minSpeed + (random.nextFloat() * (maxSpeed - minSpeed));
 
-                    // 将敌人的移动方向存入 HashMap 中
                     enemyDirections.put(enemy, new float[]{dx, dy});
                 }
 
-                // 获取敌人的当前移动方向
                 float[] direction = enemyDirections.get(enemy);
                 float dx = 0;
                 float dy = 0;
@@ -358,43 +430,40 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
                     dy = direction[1];
                 }
 
-
-                // 更新敌人位置
+                //update position
                 enemy.setX(enemy.getX() + (int) dx);
                 enemy.setY(enemy.getY() + (int) dy);
 
-                // **根据当前dx的值，判断敌人朝向**
                 if (dx > 0) {
-                    enemy.setFacingRight(true);  // 向右
+                    enemy.setFacingRight(true);
                 } else if (dx < 0) {
-                    enemy.setFacingRight(false); // 向左
+                    enemy.setFacingRight(false);
                 }
 
-                // 边界检查，防止敌人移出屏幕并改变方向
                 if (enemy.getX() <= 0) {
                     enemy.setX(0);
-                    dx = Math.abs(dx);  // 反转 X 方向，向右移动
+                    dx = Math.abs(dx);
                 }
                 if (enemy.getX() + enemy.getWidth() >= ViewWith) {
                     enemy.setX(ViewWith - enemy.getWidth());
-                    dx = -Math.abs(dx);  // 反转 X 方向，向左移动
+                    dx = -Math.abs(dx);
                 }
                 if (enemy.getY() <= 0) {
                     enemy.setY(0);
-                    dy = Math.abs(dy);  // 反转 Y 方向，向下移动
+                    dy = Math.abs(dy);
                 }
                 if (enemy.getY() + enemy.getHeight() >= ViewHeight) {
                     enemy.setY(ViewHeight - enemy.getHeight());
-                    dy = -Math.abs(dy);  // 反转 Y 方向，向上移动
+                    dy = -Math.abs(dy);
                 }
 
-                // 更新方向存储
+                // update direction
                 enemyDirections.put(enemy, new float[]{dx, dy});
 
-                // 敌人动画逻辑
+                // enemy animation
                 enemyChangeBitmapTime++;
-                if (enemyChangeBitmapTime % 2 == 0) {  // 每6帧切换一次图片
-                    enemyBitmapData = (enemyBitmapData % 4) + 1;  // 动画帧的切换（1到4）
+                if (enemyChangeBitmapTime % 2 == 0) {
+                    enemyBitmapData = (enemyBitmapData % 4) + 1;
                     switch (enemyBitmapData) {
                         case 1:
                             enemy.setBitmap(enemybitmap1);
@@ -411,7 +480,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
                     }
                 }
             } else if (enemy.getHealth() <= 0) {
-                enemy.setBitmap(enemybitmap4);  // 死亡图片
+                //enemy down
+                enemy.setBitmap(enemybitmap4);
             }
         }
     }
@@ -442,94 +512,77 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
     private void drawFinish() {
         Paint paint = new Paint();
-        paint.setColor(Color.BLACK); // 背景颜色
-        mCanvas.drawColor(Color.LTGRAY); // 设置完成页面的背景颜色
+        paint.setColor(Color.BLACK);
+        mCanvas.drawColor(Color.LTGRAY);
 
-        // 设置按钮的宽度和高度
         int buttonWidth = 300;
         int buttonHeight = 100;
 
-        // 计算按钮的 X 和 Y 坐标
-        int restartButtonX = (getWidth() - buttonWidth) / 2; // 居中
-        int restartButtonY = getHeight() / 2 - buttonHeight - 20; // 上面的按钮
+        int restartButtonX = (getWidth() - buttonWidth) / 2;
+        int restartButtonY = getHeight() / 2 - buttonHeight - 20;
 
-        int backButtonX = (getWidth() - buttonWidth) / 2; // 居中
-        int backButtonY = getHeight() / 2 + 20; // 下面的按钮
+        int backButtonX = (getWidth() - buttonWidth) / 2;
+        int backButtonY = getHeight() / 2 + 20;
 
-        // 绘制重启按钮
-        paint.setColor(Color.GREEN); // 设置重启按钮颜色
+        paint.setColor(Color.GREEN);
         mCanvas.drawRect(restartButtonX, restartButtonY, restartButtonX + buttonWidth, restartButtonY + buttonHeight, paint);
-        paint.setColor(Color.WHITE); // 设置字体颜色为白色
+        paint.setColor(Color.WHITE);
         paint.setTextSize(40);
         mCanvas.drawText("Restart", restartButtonX + (buttonWidth / 4), restartButtonY + (buttonHeight / 2) + 10, paint);
 
-        // 绘制返回开始按钮
-        paint.setColor(Color.BLUE); // 设置返回开始按钮颜色
+        paint.setColor(Color.BLUE);
         mCanvas.drawRect(backButtonX, backButtonY, backButtonX + buttonWidth, backButtonY + buttonHeight, paint);
-        paint.setColor(Color.WHITE); // 设置字体颜色为白色
+        paint.setColor(Color.WHITE);
         mCanvas.drawText("Back to Start", backButtonX + (buttonWidth / 12), backButtonY + (buttonHeight / 2) + 10, paint);
     }
 
 
     private void drawStart() {
-        // 绘制背景颜色
-        mCanvas.drawColor(Color.BLACK); // 设置背景为黑色
+        mCanvas.drawColor(Color.BLACK);
 
-        // 创建画笔
         Paint startPaint = new Paint();
-        startPaint.setColor(Color.WHITE); // 设置文本颜色为白色
-        startPaint.setTextSize(100);  // 设置标题文本大小
-        startPaint.setTextAlign(Paint.Align.CENTER);  // 文本对齐方式设置为居中
+        startPaint.setColor(Color.WHITE);
+        startPaint.setTextSize(100);
+        startPaint.setTextAlign(Paint.Align.CENTER);
 
-        // 绘制游戏标题
         mCanvas.drawText("Welcome to My Game!", mCanvas.getWidth() / 2, mCanvas.getHeight() / 2 - 100, startPaint);
 
-        // 绘制说明文本
-        startPaint.setTextSize(50); // 设置说明文本大小
+        startPaint.setTextSize(50);
         mCanvas.drawText("Tap to Start", mCanvas.getWidth() / 2, mCanvas.getHeight() / 2 + 50, startPaint);
 
-        // 绘制开始按钮
         int buttonWidth = 400;
         int buttonHeight = 150;
         int buttonX = (mCanvas.getWidth() - buttonWidth) / 2;
         int buttonY = mCanvas.getHeight() / 2 + 150;
 
-        // 绘制按钮矩形
         startPaint.setColor(Color.BLUE);
         mCanvas.drawRect(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, startPaint);
 
-        // 绘制按钮上的文本
         startPaint.setColor(Color.WHITE);
         startPaint.setTextSize(80);
         mCanvas.drawText("Start", mCanvas.getWidth() / 2, buttonY + buttonHeight / 2 + 30, startPaint);
     }
     private void drawPauseButton() {
         Paint paint = new Paint();
-        paint.setColor(Color.RED); // 设置按钮颜色为红色
+        paint.setColor(Color.RED);
 
-        // 定义按钮的宽度和高度
         int buttonWidth = 150;
         int buttonHeight = 150;
 
-        // 定义按钮的位置（右上角）
-        int buttonX = getWidth() - buttonWidth - 50; // 距离右边的距离
-        int buttonY = 50; // 距离顶部的距离
+        int buttonX = getWidth() - buttonWidth - 50;
+        int buttonY = 50;
 
-        // 绘制按钮的矩形
         mCanvas.drawRect(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, paint);
 
-        // 绘制暂停符号（两个竖条）
-        paint.setColor(Color.WHITE); // 设置符号颜色为白色
+        paint.setColor(Color.WHITE);
         int barWidth = 20;
         int barHeight = 80;
 
-        // 绘制左边的竖条
         mCanvas.drawRect(buttonX + (buttonWidth / 4) - (barWidth / 2),
                 buttonY + (buttonHeight / 2) - (barHeight / 2),
                 buttonX + (buttonWidth / 4) + (barWidth / 2),
                 buttonY + (buttonHeight / 2) + (barHeight / 2), paint);
 
-        // 绘制右边的竖条
         mCanvas.drawRect(buttonX + (3 * buttonWidth / 4) - (barWidth / 2),
                 buttonY + (buttonHeight / 2) - (barHeight / 2),
                 buttonX + (3 * buttonWidth / 4) + (barWidth / 2),
@@ -540,6 +593,7 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        //Finish Button
         if (GameState == States.Finish && event.getAction() == MotionEvent.ACTION_DOWN) {
             float x = event.getX();
             float y = event.getY();
@@ -551,8 +605,8 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
             if (x >= restartButtonX && x <= restartButtonX + buttonWidth &&
                     y >= restartButtonY && y <= restartButtonY + buttonHeight) {
-                GameState = States.Playing;
                 initGame();
+                GameState = States.Playing;
             }
 
             int backButtonX = (getWidth() - buttonWidth) / 2;
@@ -560,60 +614,58 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
             if (x >= backButtonX && x <= backButtonX + buttonWidth &&
                     y >= backButtonY && y <= backButtonY + buttonHeight) {
-
+                initGame();
                 GameState = States.Start;
             }
         }
+
+        //Playing Button
         if (GameState == States.Playing && event.getAction() == MotionEvent.ACTION_DOWN) {
             float x = event.getX();
             float y = event.getY();
 
-            // 定义暂停按钮的位置
             int buttonWidth = 150;
             int buttonHeight = 150;
-            int buttonX = getWidth() - buttonWidth - 50; // 距离右边的距离
-            int buttonY = 50; // 距离顶部的距离
+            int buttonX = getWidth() - buttonWidth - 50;
+            int buttonY = 50;
 
-            // 检查是否触摸了暂停按钮的区域
             if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
-                // 用户点击了按钮，切换到暂停状态
+
                 if (GameState == States.Playing) {
-                    GameState = States.Pause; // 切换到暂停状态
+                    GameState = States.Pause;
                 } else if (GameState == States.Pause) {
-                    GameState = States.Playing; // 切换回游戏状态
+                    GameState = States.Playing;
                 }
             }
         }
+        //Start Button
         if (GameState == States.Start && event.getAction() == MotionEvent.ACTION_DOWN) {
-            // 获取触摸的 x 和 y 坐标
             float x = event.getX();
             float y = event.getY();
 
-            // 检查是否触摸了开始按钮的区域
             int buttonWidth = 400;
             int buttonHeight = 150;
             int buttonX = (getWidth() - buttonWidth) / 2;
-            int buttonY = getHeight() / 2 + 150; // 确保与 drawStart 中的 Y 坐标一致
+            int buttonY = getHeight() / 2 + 150;
 
             if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
-                // 用户点击了按钮，开始游戏
-                GameState = States.Playing;
+                // GameState change
                 initGame();
+                GameState = States.Playing;
             }
         }
+
+        //Pause Button
         if (GameState == States.Pause && event.getAction() == MotionEvent.ACTION_DOWN) {
-            // 获取触摸的 x 和 y 坐标
             float x = event.getX();
             float y = event.getY();
 
-            // 检查是否触摸了按钮的区域
             int buttonWidth = 400;
             int buttonHeight = 150;
             int buttonX = (getWidth() - buttonWidth) / 2;
             int buttonY = getHeight() / 2 + 50;
 
             if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
-                // 用户点击了按钮，恢复游戏
                 GameState = States.Playing;
             }
         }
@@ -624,26 +676,23 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         Paint pausePaint = new Paint();
 
         pausePaint.setColor(Color.BLACK);
-        pausePaint.setAlpha(128);  // 设置半透明
+        pausePaint.setAlpha(128);
         mCanvas.drawRect(0, 0, mCanvas.getWidth(), mCanvas.getHeight(), pausePaint);
 
         pausePaint.setColor(Color.WHITE);
-        pausePaint.setAlpha(255);  // 设置为不透明
+        pausePaint.setAlpha(255);
         pausePaint.setTextSize(100);
         pausePaint.setTextAlign(Paint.Align.CENTER);
         mCanvas.drawText("Game Paused", mCanvas.getWidth() / 2, mCanvas.getHeight() / 2 - 100, pausePaint);
 
-        // 3. 绘制按钮
         int buttonWidth = 400;
         int buttonHeight = 150;
         int buttonX = (mCanvas.getWidth() - buttonWidth) / 2;
         int buttonY = mCanvas.getHeight() / 2 + 50;
 
-        // 绘制按钮矩形
         pausePaint.setColor(Color.BLUE);
         mCanvas.drawRect(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, pausePaint);
 
-        // 绘制按钮上的文本
         pausePaint.setColor(Color.WHITE);
         pausePaint.setTextSize(80);
         mCanvas.drawText("Resume", mCanvas.getWidth() / 2, buttonY + buttonHeight / 2 + 30, pausePaint);
@@ -652,9 +701,9 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
 
 
     private void drawKillCount() {
+
         String HealthText = "Health: " + player.getHealth();
         String killText = "KILLS: " + killCount;
-        // 在屏幕顶部中间绘制击杀数量
         mCanvas.drawText(HealthText, 200, 100, textPaint);
         mCanvas.drawText(killText, (float) ViewWith / 2, 100, textPaint);
     }
@@ -663,15 +712,13 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
         for (Figure enemy : enemies) {
             Matrix matrix = new Matrix();
 
-            // 先进行翻转操作，再设置平移
             if (!enemy.isFacingRight()) {
                 matrix.preScale(-1.0f, 1.0f, (float) enemy.getBitmap().getWidth() / 2, (float) enemy.getBitmap().getHeight() / 2);  // 基于中心点翻转
             }
 
-            // 设置平移，将敌人绘制在正确的位置
             matrix.setTranslate(enemy.getX() - cameraOffsetX - enemy.getWidth() / 2, enemy.getY() - cameraOffsetY - enemy.getHeight() / 2);
 
-            // 绘制当前动画帧
+
             mCanvas.drawBitmap(enemy.getBitmap(), matrix, null);
         }
     }
@@ -679,34 +726,33 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     int playerBitmapData = 0;
     int changeBitmapTime = 0;
     private void playerMove() {
-        float angle = gameController.getAngle();  // 获取摇杆的角度
-        float strength = gameController.getStrength();  // 获取摇杆的力度
+        float angle = gameController.getAngle();  // Angle
+        float strength = gameController.getStrength();  // Strength
 
         if (strength > 0) {
-            float speed = 5.0f * strength;  // 根据摇杆力度调整速度
+            float speed = 5.0f * strength;
             float dx = (float) Math.cos(angle) * speed;
             float dy = (float) Math.sin(angle) * speed;
 
-            // 移动玩家
+            // change position
             player.setX(player.getX() + dx);
             player.setY(player.getY() + dy);
             cameraOffsetX += dx;
             cameraOffsetY += dy;
 
-            // 判断水平移动方向，并调整玩家朝向
+            // direction
             if (dx > 0) {
-                player.setFacingRight(true);  // 朝右
+                player.setFacingRight(true);
             } else if (dx < 0) {
-                player.setFacingRight(false); // 朝左
+                player.setFacingRight(false);
             }
 
-            // 播放跑步动画
+            // Animation
             changeBitmapTime++;
-            if (changeBitmapTime % 2 == 0) {  // 每6帧切换一次图片
+            if (changeBitmapTime % 2 == 0) {
                 playerBitmapData = (playerBitmapData % 4) + 1;
             }
         } else {
-            // 如果没有移动，角色保持站立不动
             playerBitmapData = 0;
         }
 
@@ -736,14 +782,12 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private void drawPlayer() {
         Matrix matrix = new Matrix();
 
-        // 始终将角色绘制在屏幕中央，而不是基于角色的X、Y坐标
         matrix.setTranslate(player.getX() - cameraOffsetX - player.getWidth() / 2, player.getY() - cameraOffsetY - player.getHeight() / 2);
 
         if (!player.isFacingRight()) {
             matrix.preScale(-1.0f, 1.0f, (float) player.getBitmap().getWidth() / 2, (float) player.getBitmap().getHeight() / 2);
         }
 
-        // 绘制玩家
         mCanvas.drawBitmap(player.getBitmap(), matrix, null);
     }
 
@@ -753,40 +797,34 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     }
 
     private void drawWeapon() {
-        Figure nearestEnemy = findNearestEnemy();  // 找到最近的敌人
+        Figure nearestEnemy = findNearestEnemy();
         if (nearestEnemy != null) {
-            // 计算武器指向最近敌人的角度
+
             float dx = nearestEnemy.getX() - player.getX();
             float dy = nearestEnemy.getY() - player.getY();
-            float weaponAngle = (float) Math.atan2(dy, dx);  // 计算武器与敌人的夹角
+            float weaponAngle = (float) Math.atan2(dy, dx);
 
-            // 将武器角度从弧度转换为度数
             float weaponAngleDegrees = (float) Math.toDegrees(weaponAngle);
 
-            // 生成一个新的矩阵，用来旋转武器
             Matrix matrix = new Matrix();
 
-            // 获取角色的 X 和 Y 坐标
             float playerX = player.getX();
             float playerY = player.getY();
             float weaponX = playerX + player.getWidth()/2;
             float weaponY = playerY;
             weapon.setX(weaponX);
             weapon.setY(weaponY);
-            // 将武器设置在角色上方
+
             matrix.setTranslate(weaponX - cameraOffsetX , weaponY - cameraOffsetY  );  // 将武器放在角色头上 + weapon.getHeight() * 2
 
-            // 如果武器角度在 90° 到 270° 之间（指向左边）
             weaponAngleDegrees = normalizeAngle(weaponAngleDegrees);
             if (weaponAngleDegrees > 90 && weaponAngleDegrees < 270) {
-                // 水平翻转武器图像
+
                 matrix.preScale(1.0f, -1.0f, weapon.getWidth() / 2, weapon.getHeight() / 2);
             }
 
-            // 旋转武器，使其指向最近敌人
             matrix.postRotate(weaponAngleDegrees, playerX - cameraOffsetX , playerY - cameraOffsetY);
 
-            // 绘制旋转后的武器
             mCanvas.drawBitmap(weapon.getBitmap(), matrix, null);
         }
     }
@@ -800,18 +838,16 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
     private void fireBullet(float initBulletAngle) {
         bulletFireCounter++;
         if (bulletFireCounter >= bulletFireInterval) {
-            // 获取武器的 X 和 Y 坐标
 
-            // 根据武器角度计算子弹的起始位置，让子弹从武器的前端发射
             float bulletStartX = weapon.getX() + (float) Math.cos(initBulletAngle) * weapon.getWidth();
             float bulletStartY = weapon.getY() + (float) Math.sin(initBulletAngle) * weapon.getHeight();
-            // 创建新的子弹并将其添加到子弹列表
+
             Bullet newBullet = new Bullet(bulletBitmap,bulletStartX,bulletStartY, bulletBitmap.getWidth(), bulletBitmap.getHeight(), 1,initBulletAngle);
 
-            // 将新子弹添加到子弹列表
+
             bullets.add(newBullet);
 
-            // 重置子弹发射计数器
+
             bulletFireCounter = 0;
         }
     }
@@ -822,7 +858,4 @@ public class Game extends SurfaceView implements SurfaceHolder.Callback, Runnabl
             mCanvas.drawBitmap(bullet.getBitmap(), bullet.getX() - cameraOffsetX - bullet.getWidth()/2 , bullet.getY() - cameraOffsetY - bullet.getHeight()/2, null);
         }
     }
-
-
-
 }
